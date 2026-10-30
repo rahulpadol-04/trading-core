@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+[ -f .env ] || cp .env.example .env
+
+if [ ! -d vendor ]; then
+  docker run --rm -u "$(id -u):$(id -g)" -v "$(pwd):/var/www/html" -w /var/www/html \
+    laravelsail/php84-composer:latest composer install --ignore-platform-reqs
+fi
+
+./vendor/bin/sail up -d --build
+
+until ./vendor/bin/sail exec -T pgsql pg_isready -U sail >/dev/null 2>&1; do sleep 1; done
+
+grep -q '^APP_KEY=base64:' .env || ./vendor/bin/sail artisan key:generate --force
+./vendor/bin/sail artisan migrate:fresh --seed --force
+./vendor/bin/sail artisan horizon:terminate >/dev/null 2>&1 || true
+
+APP_PORT=$(grep -E '^APP_PORT=' .env | cut -d= -f2 || true)
+echo
+echo "API ready at http://localhost:${APP_PORT:-80}/api/v1"
+echo "Seeded tokens are printed above and listed in README.md"
