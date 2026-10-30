@@ -100,6 +100,7 @@ return [
 
     'waits' => [
         'redis:default' => 60,
+        'redis:orders' => 10,
     ],
 
     /*
@@ -199,16 +200,31 @@ return [
     */
 
     'defaults' => [
-        'supervisor-1' => [
+        'orders-supervisor' => [
             'connection' => 'redis',
-            'queue' => ['default'],
+            'queue' => ['orders'],
             'balance' => 'auto',
             'autoScalingStrategy' => 'time',
-            'maxProcesses' => 1,
+            'minProcesses' => 2,
+            'maxProcesses' => 10,
+            'balanceMaxShift' => 2,
+            'balanceCooldown' => 3,
             'maxTime' => 0,
             'maxJobs' => 0,
             'memory' => 128,
-            'tries' => 1,
+            'tries' => 5,
+            'timeout' => 45,
+            'nice' => 0,
+        ],
+        'default-supervisor' => [
+            'connection' => 'redis',
+            'queue' => ['default'],
+            'balance' => 'simple',
+            'processes' => 3,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 128,
+            'tries' => 3,
             'timeout' => 60,
             'nice' => 0,
         ],
@@ -216,17 +232,13 @@ return [
 
     'environments' => [
         'production' => [
-            'supervisor-1' => [
-                'maxProcesses' => 10,
-                'balanceMaxShift' => 1,
-                'balanceCooldown' => 3,
-            ],
+            'orders-supervisor' => ['maxProcesses' => 20],
+            'default-supervisor' => ['processes' => 5],
         ],
 
         'local' => [
-            'supervisor-1' => [
-                'maxProcesses' => 3,
-            ],
+            'orders-supervisor' => ['maxProcesses' => 4],
+            'default-supervisor' => ['processes' => 2],
         ],
     ],
 
