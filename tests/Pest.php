@@ -15,10 +15,13 @@ use App\Services\Ledger;
 use App\Services\PriceStore;
 use App\Support\Decimal;
 use Carbon\CarbonImmutable;
+use Illuminate\Foundation\Testing\DatabaseTruncation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Process\Pool;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -32,6 +35,15 @@ pest()->extend(TestCase::class)
         Cache::flush();
     })
     ->in('Feature');
+
+pest()->extend(TestCase::class)
+    ->use(DatabaseTruncation::class)
+    ->beforeEach(function () {
+        Redis::flushdb();
+        Cache::flush();
+    })
+    ->group('concurrency')
+    ->in('Concurrency');
 
 function trader(string $funds = '1000'): User
 {
@@ -97,4 +109,39 @@ function holding(User $user, Asset $asset, string $quantity, string $cost = '100
 function assertLedgerConsistent(): void
 {
     expect(Artisan::call('ledger:verify'))->toBe(0, Artisan::output());
+}
+
+/**
+ * A wall-clock instant far enough ahead for every worker process to boot.
+ */
+function startInstant(): string
+{
+    return (string) (microtime(true) + 3.0);
+}
+
+/**
+ * Run worker scripts as separate OS processes, each with its own PHP runtime and
+ * database connection, and return their outputs in the order given.
+ *
+ * @param  list<array<int, string|int>>  $workers  [script, ...arguments]
+ * @return list<string>
+ */
+function runTogether(array $workers): array
+{
+    $results = Process::pool(function (Pool $pool) use ($workers): void {
+        foreach ($workers as $worker) {
+            $script = array_shift($worker);
+
+            $pool->path(base_path())
+                ->env(['QUEUE_CONNECTION' => 'null'])
+                ->timeout(60)
+                ->command(['php', "tests/Concurrency/workers/{$script}", ...array_map(strval(...), $worker)]);
+        }
+    })->start()->wait();
+
+    return array_map(function (int $i) use ($results): string {
+        expect($results[$i]->successful())->toBeTrue($results[$i]->errorOutput());
+
+        return $results[$i]->output();
+    }, array_keys($workers));
 }
