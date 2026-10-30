@@ -9,3 +9,4 @@ parameters:
         - database
         - routes
     tmpDir: storage/phpstan
+    parseModelCastsMethod: true
