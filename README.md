@@ -3,7 +3,7 @@
 ![CI](https://github.com/rahulpadol-04/trading-core/actions/workflows/ci.yml/badge.svg)
 
 Order-management core for a prop trading firm: Laravel 13 · PHP 8.5 · PostgreSQL 18 · Redis · Sail.
-Design rationale, locking strategy, indexes with EXPLAIN output and known gaps are in [DECISIONS.md](DECISIONS.md).
+Design decisions: [DECISIONS.md](DECISIONS.md).
 
 ## Quick start (one command)
 
@@ -20,7 +20,7 @@ Requires Docker. It installs Composer dependencies if `vendor/` is missing, then
 
 Then it runs `migrate:fresh --seed` and prints the seeded tokens. The API is at `http://localhost/api/v1`.
 
-If ports 80, 5432 or 6379 are taken on your machine, set `APP_PORT`, `FORWARD_DB_PORT` or `FORWARD_REDIS_PORT` in `.env` (for example `8000`, `5433`, `6380`). Containers still talk to each other on the standard ports.
+If ports 80, 5432 or 6379 are taken, set `APP_PORT`, `FORWARD_DB_PORT` or `FORWARD_REDIS_PORT` in `.env`.
 
 Laravel Sail is `./vendor/bin/sail`. The commands below assume the alias `alias sail='sh $([ -f sail ] && echo sail || echo vendor/bin/sail)'`.
 
@@ -33,7 +33,7 @@ Laravel Sail is `./vendor/bin/sail`. The commands below assume the alias `alias 
 | carol@example.com | `carol-local-token-000000000000000000000000003` | 100,000 USD | same |
 
 - **Assets:** BTC-USD, ETH-USD, SOL-USD, AAPL, EUR-USD, each with 25 hours of one-minute ticks.
-- **Demo fills:** six MARKET buys are placed and filled through the real actions, so the market summary has volume.
+- **Demo fills:** six filled MARKET buys.
 
 ## Running the pieces
 
@@ -45,32 +45,28 @@ Laravel Sail is `./vendor/bin/sail`. The commands below assume the alias `alias 
 | Price simulator | `sail artisan market:simulate` (options `--rate=50 --flush-ms=200 --duration=0`) |
 | Expire overdue orders now | `sail artisan orders:expire` |
 | Ledger reconciliation | `sail artisan ledger:verify` |
-| Horizon dashboard | `http://localhost/horizon` (local environment only) |
-| EXPLAIN-scale data | `sail artisan db:seed --class=LoadTestSeeder` (synthetic, see DECISIONS.md) |
+| Horizon dashboard | `http://localhost/horizon` |
+| EXPLAIN-scale data | `sail artisan db:seed --class=LoadTestSeeder` |
 
 JSON logs for the correlation id: `LOG_CHANNEL=stderr` and `LOG_STDERR_FORMATTER="Monolog\Formatter\JsonFormatter"`.
 
 ## Tests
 
 ```sh
-sail artisan test                               # everything: unit, feature and concurrency (~25 s)
-sail artisan test --exclude-group=concurrency   # fast suite
-sail artisan test --group=concurrency           # real multi-process tests
+sail artisan test
+sail artisan test --exclude-group=concurrency
+sail artisan test --group=concurrency
 sail bin pint --test && sail php vendor/bin/phpstan analyse
 ```
 
 Tests run against the PostgreSQL `testing` database and Redis databases 5 and 6, never SQLite.
 
-The concurrency tests live in `tests/Concurrency`. Each spawns separate PHP processes with `Process::pool`. Every process boots its own app and opens its own database connection, and all of them start on a shared wall-clock barrier:
+`tests/Concurrency` spawns separate PHP processes with `Process::pool`, each with its own database connection, started on a shared clock barrier:
 
 - **Placement:** 20 simultaneous BUYs against a wallet that affords 5. Exactly 5 are accepted, and no balance is ever negative.
 - **Idempotency:** 10 simultaneous retries with the same Idempotency-Key create one order.
 - **Cancel vs fill:** cancel and fill race on 10 orders. Exactly one wins each time, and each reservation is released once.
 - **Cache stampede:** 10 cold readers of the market summary cause exactly one rebuild.
-
-These tests use committed data (`DatabaseTruncation`), because other processes cannot see a test's open transaction.
-
-CI (`.github/workflows/ci.yml`) runs Pint, Larastan level 6 and the full suite, including the concurrency group, against PostgreSQL and Redis service containers.
 
 ## API
 

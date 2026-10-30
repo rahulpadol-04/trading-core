@@ -1,7 +1,5 @@
 # Decisions
 
-Guiding constraint: a double spend or a negative balance is an incident. So the database is the source of truth for money, every money path holds a row lock, and PostgreSQL itself refuses anything the application gets wrong.
-
 ## 1. Locking strategy
 
 | Operation | Mechanism | Why |
@@ -68,7 +66,7 @@ Alternatives considered:
 
 Foreign keys not covered by a leading column (for example `executions.asset_id`) have no extra index. Their parents are delete-restricted and never deleted on a hot path.
 
-**Measured plans:** `EXPLAIN (ANALYZE)` on about 1M ticks and 200k filled orders and executions (`LoadTestSeeder`), PostgreSQL 18. Trimmed to the lines that matter:
+**Measured plans:** `EXPLAIN (ANALYZE)` on about 1M ticks and 200k filled orders and executions:
 
 ```
 Q1 filled 24h   Aggregate (4.5 ms)
@@ -76,7 +74,7 @@ Q1 filled 24h   Aggregate (4.5 ms)
 Q2 top 5        Limit -> Sort -> HashAggregate (4.4 ms)
                   -> Index Only Scan using executions_time_cover_idx on executions (rows=28797)  Heap Fetches: 0
 Q3 prices       Nested Loop Left Join x2 (0.22 ms over 1M ticks)
-                  -> Seq Scan on assets (5 rows; the right plan)
+                  -> Seq Scan on assets
                   -> Limit -> Index Scan using market_ticks_asset_time_idx            Index Cond: (asset_id = a.id)
                   -> Limit -> Index Scan Backward using market_ticks_asset_time_idx   Index Cond: (asset_id = a.id AND recorded_at >= ...)
 Matching        Index Scan using orders_matching_idx (0.07 ms)  Index Cond: (asset_id = $1 AND side = 'BUY' AND limit_price >= 60002)
@@ -84,7 +82,7 @@ Expiry          Index Scan using orders_expiry_idx (0.07 ms)    Index Cond: (exp
 Listing         Index Scan using orders_user_status_id_idx      Index Cond: (user_id = 1 AND status = 'PENDING')
 ```
 
-One surprise is worth explaining. For `user_id = 1 AND status = 'FILLED' AND id < 150000`, the planner walked `orders_pkey` backwards instead (0.1 ms, 52 rows filtered). The synthetic data gives each of the three users a third of all orders, almost all of them FILLED, so 26 matches sit within the first 78 rows. With many traders, or any selective filter, it uses the composite index, as the PENDING plan shows.
+For `user_id = 1 AND status = 'FILLED'` the planner walks `orders_pkey` backwards instead, because each of the three test users owns a third of all orders. A selective filter uses the composite index, as above.
 
 ## 5. Matching trigger strategy
 
@@ -93,8 +91,6 @@ One surprise is worth explaining. For `user_id = 1 AND status = 'FILLED' AND id 
 - **Only crossing orders are touched:** the job runs two range scans on the tiny partial index (BUY `limit_price >= price`, SELL `<= price`) and dispatches `ProcessOrderJob` only for crossed orders. Orders that cannot fill are never touched, and matching never queries `market_ticks`.
 - **Safety under the lock:** `ProcessOrderJob` is unique per order, and settlement re-checks the current price under the order lock, so an order that uncrossed meanwhile stays `PENDING`.
 - **Expiry is enforced twice:** a sweep runs every minute, and settlement refuses to fill a late order (it cancels it instead).
-
-Alternative for 100× load: Redis sorted sets per asset and side. That needs a dual write kept consistent with PostgreSQL, and its scores are doubles.
 
 ## 6. Market summary caching and freshness
 
@@ -106,7 +102,7 @@ Alternative for 100× load: Redis sorted sets per asset and side. That needs a d
 
 ## 7. `market_ticks` growth
 
-At 50 ticks/s the table grows about 4.3M rows a day. The plan (not implemented):
+At 50 ticks/s the table grows about 4.3M rows a day. Plan:
 - Partition by range on `recorded_at`, daily, with primary key `(id, recorded_at)`, created ahead of time by a scheduled command or `pg_partman`.
 - Roll raw ticks up into one-minute OHLC candles for history.
 - Retain raw ticks for N days by **dropping or detaching partitions**, which is instant and leaves no bloat, unlike `DELETE`.
@@ -121,8 +117,6 @@ At 50 ticks/s the table grows about 4.3M rows a day. The plan (not implemented):
 - **Replays count toward the rate limit.**
 - **Audit order across queues:** audit rows are written by a queued listener on `default`, and settlement runs on `orders`, so rows for one order may land out of order. Each row carries a full before/after snapshot.
 - **`market_ticks` is not partitioned yet.**
-- **`LoadTestSeeder` is synthetic:** its fills have no ledger entries, and it exists only to size tables for EXPLAIN.
-- **Stack versions:** PostgreSQL 18 and PHP 8.5, the current Sail defaults, are used instead of the guide's 16 and 8.4. Both meet the brief.
 - **With another day:**
   - partial fills
   - a stuck-order sweeper
