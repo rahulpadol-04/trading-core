@@ -146,6 +146,3 @@ Every error has the same shape:
 
 Every response carries `X-Correlation-ID`. Send a UUID in that header to trace a request through its jobs and audit rows.
 
-## How AI tools were used
-
-The code, tests and docs were written by an AI coding agent, working from an AI-generated build guide.
