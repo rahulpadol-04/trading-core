@@ -2,51 +2,47 @@
 
 declare(strict_types=1);
 
+use App\Models\Asset;
+use App\Models\User;
+use App\Models\Wallet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Redis;
 use Tests\TestCase;
 
-/*
-|--------------------------------------------------------------------------
-| Test Case
-|--------------------------------------------------------------------------
-|
-| The closure you provide to your test functions is always bound to a specific PHPUnit test
-| case class. By default, that class is "PHPUnit\Framework\TestCase". Of course, you may
-| need to change it using the "pest()" function to bind different classes or traits.
-|
-*/
+pest()->extend(TestCase::class)->in('Unit');
 
 pest()->extend(TestCase::class)
- // ->use(RefreshDatabase::class)
+    ->use(RefreshDatabase::class)
+    ->beforeEach(function () {
+        Redis::flushdb();
+        Cache::flush();
+    })
     ->in('Feature');
 
-/*
-|--------------------------------------------------------------------------
-| Expectations
-|--------------------------------------------------------------------------
-|
-| When you're writing tests, you often need to check that values meet certain conditions. The
-| "expect()" function gives you access to a set of "expectations" methods that you can use
-| to assert different things. Of course, you may extend the Expectation API at any time.
-|
-*/
-
-expect()->extend('toBeOne', function () {
-    return $this->toBe(1);
-});
-
-/*
-|--------------------------------------------------------------------------
-| Functions
-|--------------------------------------------------------------------------
-|
-| While Pest is very powerful out-of-the-box, you may have some testing code specific to your
-| project that you don't want to repeat in every file. Here you can also expose helpers as
-| global functions to help you to reduce the number of lines of code in your test files.
-|
-*/
-
-function something()
+function trader(string $funds = '1000'): User
 {
-    // ..
+    $user = User::factory()->create();
+    Wallet::factory()->for($user)->funded($funds)->create();
+
+    return $user;
+}
+
+function tradableAsset(int $pricePrecision = 2, int $quantityPrecision = 4): Asset
+{
+    return Asset::factory()->create([
+        'price_precision' => $pricePrecision,
+        'quantity_precision' => $quantityPrecision,
+    ]);
+}
+
+function wallet(User $user): Wallet
+{
+    return $user->wallet()->firstOrFail();
+}
+
+function assertLedgerConsistent(): void
+{
+    expect(Artisan::call('ledger:verify'))->toBe(0, Artisan::output());
 }
