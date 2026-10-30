@@ -12,6 +12,8 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Context;
+use Illuminate\Support\Str;
 
 #[Signature('orders:expire')]
 #[Description('Cancel PENDING orders whose expires_at has passed and release their reservations')]
@@ -19,6 +21,8 @@ class ExpireOrdersCommand extends Command
 {
     public function handle(CancelOrderAction $cancel): int
     {
+        Context::add('correlation_id', (string) Str::uuid());
+
         $expired = 0;
 
         Order::query()

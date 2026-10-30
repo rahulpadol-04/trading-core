@@ -105,9 +105,9 @@ final class PlaceOrderAction
             'response_body' => $body,
         ]);
 
-        ProcessOrderJob::dispatch($order->id)->afterCommit();
-
         OrderPlaced::dispatch($order->id, [], OrderSnapshot::of($order), $data->userId, $data->requestIp);
+
+        ProcessOrderJob::dispatch($order->id)->afterCommit();
 
         return new PlaceOrderResult($order->id, 202, $body, replayed: false);
     }

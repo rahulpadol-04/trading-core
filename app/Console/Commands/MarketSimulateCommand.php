@@ -14,6 +14,8 @@ use Carbon\CarbonImmutable;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Context;
+use Illuminate\Support\Str;
 
 #[Signature('market:simulate
     {--rate=50 : Total ticks per second across all assets}
@@ -26,6 +28,8 @@ class MarketSimulateCommand extends Command
 
     public function handle(PriceStore $prices): int
     {
+        Context::add('correlation_id', (string) Str::uuid());
+
         $rate = max(1, (int) $this->option('rate'));
         $windowMicros = max(10, (int) $this->option('flush-ms')) * 1000;
         $perWindow = max(1, (int) round($rate * $windowMicros / 1_000_000));
