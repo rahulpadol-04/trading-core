@@ -8,10 +8,6 @@ use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Support\Facades\Context;
 
-/**
- * Carries ids and plain snapshots, never models, so a queued listener records the
- * state at the moment of the change rather than whatever the row holds later.
- */
 abstract class OrderEvent implements AuditableOrderEvent, ShouldDispatchAfterCommit
 {
     use Dispatchable;

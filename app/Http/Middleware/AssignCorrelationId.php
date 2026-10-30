@@ -10,10 +10,6 @@ use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
-/**
- * Laravel adds Context to every log record and carries it into queued jobs and
- * listeners, so one id follows a request through settlement and auditing.
- */
 final class AssignCorrelationId
 {
     public function handle(Request $request, Closure $next): Response

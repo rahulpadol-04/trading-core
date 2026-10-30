@@ -16,9 +16,6 @@ final class MarketSummaryCache
     public function __construct(private readonly BuildMarketSummaryAction $builder) {}
 
     /**
-     * Cache hit, or exactly one reader rebuilds while the others wait on the lock
-     * and then read the value it stored.
-     *
      * @return array<string, mixed>
      */
     public function get(): array
@@ -38,9 +35,6 @@ final class MarketSummaryCache
     }
 
     /**
-     * Compute and overwrite. Never forget the key: readers keep the old value until
-     * the new one lands, so a burst of fills cannot cause a cold-cache stampede.
-     *
      * @return array<string, mixed>
      */
     public function rebuild(): array

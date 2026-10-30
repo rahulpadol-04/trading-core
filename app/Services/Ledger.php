@@ -17,13 +17,6 @@ use App\Support\Decimal;
 use Illuminate\Support\Facades\DB;
 use LogicException;
 
-/**
- * The only place balances change. Each movement updates the balance column and
- * appends the matching entry, so SUM(entries) per bucket always equals the column.
- *
- * Callers run inside a transaction and have already locked the wallet or position
- * row (global lock order: order -> wallet -> position).
- */
 final class Ledger
 {
     public function deposit(Wallet $wallet, Decimal $amount): void
@@ -57,10 +50,6 @@ final class Ledger
         $this->moveCash($wallet, LedgerBucket::Available, $amount, LedgerEntryType::Trade, $order);
     }
 
-    /**
-     * Lock the holding row, creating it first if missing. INSERT ... ON CONFLICT DO NOTHING
-     * keeps two concurrent first buys of an asset from creating two rows.
-     */
     public function lockPosition(int $userId, int $assetId): Position
     {
         $this->assertInTransaction();

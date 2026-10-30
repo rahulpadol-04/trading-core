@@ -10,9 +10,6 @@ interface AuditableOrderEvent
 
     public function orderId(): int;
 
-    /**
-     * The user behind the change, or null for the system (worker, scheduler).
-     */
     public function actorId(): ?int;
 
     public function ipAddress(): ?string;

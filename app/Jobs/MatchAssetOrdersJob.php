@@ -13,11 +13,6 @@ use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
-/**
- * One job per asset, deduplicated while queued. It reads the newest price when it runs,
- * so it covers every tick that arrived while it waited, and dispatches settlement only
- * for PENDING LIMIT orders whose limit the price crosses.
- */
 final class MatchAssetOrdersJob implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
     use Queueable;

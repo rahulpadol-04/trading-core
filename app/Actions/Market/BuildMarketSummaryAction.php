@@ -13,10 +13,6 @@ use Illuminate\Support\Facades\DB;
 
 final class BuildMarketSummaryAction
 {
-    /**
-     * Latest tick and first tick inside the window per asset: two LATERAL index probes
-     * per asset on market_ticks (asset_id, recorded_at DESC).
-     */
     private const string PRICES_SQL = <<<'SQL'
         SELECT a.id, a.symbol, latest.price AS last_price, opening.price AS open_price
         FROM assets a

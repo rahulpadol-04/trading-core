@@ -10,14 +10,8 @@ use App\Enums\OrderType;
 use App\Support\Decimal;
 use LogicException;
 
-/**
- * Pure matching rules: no database, no Redis.
- */
 final class MatchingRules
 {
-    /**
-     * @param  Decimal|null  $freshPrice  latest price, or null when it is older than the max age
-     */
     public function decide(OrderSide $side, OrderType $type, ?Decimal $limitPrice, ?Decimal $freshPrice): MatchDecision
     {
         if ($type === OrderType::Market) {

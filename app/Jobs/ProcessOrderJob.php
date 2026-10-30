@@ -11,11 +11,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Throwable;
 
-/**
- * Business outcomes (filled, rejected, waiting, already final) return normally and are
- * never retried; only infrastructure errors throw. Uniqueness only collapses duplicate
- * dispatches; idempotency comes from the row lock in SettleOrderAction.
- */
 final class ProcessOrderJob implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;

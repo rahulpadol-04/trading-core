@@ -8,10 +8,6 @@ use App\Support\Decimal;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Redis;
 
-/**
- * Latest price per asset in one Redis hash: prices:latest {assetId => "price|unixMicros"}.
- * Price and timestamp share one field so they can never disagree.
- */
 final class PriceStore
 {
     private const string KEY = 'prices:latest';

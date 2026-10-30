@@ -11,9 +11,6 @@ use Illuminate\Http\Request;
 
 final class WalletController extends Controller
 {
-    /**
-     * A lock-free snapshot: readers never block writers.
-     */
     public function __invoke(Request $request): WalletResource
     {
         $user = $request->user();

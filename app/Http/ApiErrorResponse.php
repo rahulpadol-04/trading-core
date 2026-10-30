@@ -11,9 +11,6 @@ use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Throwable;
 
-/**
- * Renders every API error as {"error": {"code", "message", "details"?}}.
- */
 final class ApiErrorResponse
 {
     public static function from(Throwable $e): JsonResponse

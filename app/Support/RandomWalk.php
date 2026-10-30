@@ -6,10 +6,6 @@ namespace App\Support;
 
 final class RandomWalk
 {
-    /**
-     * Move the price by -10..+10 basis points, rounded to the asset's price precision
-     * and never below the smallest price step.
-     */
     public static function step(Decimal $price, int $pricePrecision): Decimal
     {
         $basisPoints = random_int(-10, 10);

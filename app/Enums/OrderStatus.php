@@ -18,9 +18,6 @@ enum OrderStatus: string
         return ! $this->holdsReservation();
     }
 
-    /**
-     * States in which the order still holds cash or quantity in reserve.
-     */
     public function holdsReservation(): bool
     {
         return $this === self::Pending || $this === self::Processing;

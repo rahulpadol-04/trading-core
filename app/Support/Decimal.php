@@ -10,9 +10,6 @@ use InvalidArgumentException;
 use JsonSerializable;
 use Stringable;
 
-/**
- * Immutable fixed-point number. It is never constructed from a float.
- */
 final class Decimal implements JsonSerializable, Stringable
 {
     public const int STORAGE_SCALE = 8;
