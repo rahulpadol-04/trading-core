@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Api\V1\MarketSummaryController;
 use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\WalletController;
 use Illuminate\Support\Facades\Route;
@@ -13,4 +14,5 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function (): void {
     Route::delete('orders/{order}', [OrderController::class, 'destroy'])->name('orders.destroy');
 
     Route::get('wallet', WalletController::class)->name('wallet.show');
+    Route::get('market/summary', MarketSummaryController::class)->name('market.summary');
 });
