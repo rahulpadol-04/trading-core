@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
 
     'market_buy_buffer' => env('TRADING_MARKET_BUY_BUFFER', '0.05'),
